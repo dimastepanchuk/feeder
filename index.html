@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Baby Feed Tracker</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #f0f4f8;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .card {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+      }
+      .total-banner {
+        background: #5a67d8;
+        color: white;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-weight: bold;
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        margin: 10px 0;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 16px;
+      }
+      .btn {
+        width: 100%;
+        padding: 15px;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 5px;
+      }
+      .btn-primary {
+        background: #5a67d8;
+        color: white;
+      }
+      .btn-danger {
+        background: #e53e3e;
+        color: white;
+        margin-top: 20px;
+        font-size: 12px;
+        padding: 8px;
+      }
+      .history {
+        margin-top: 20px;
+        width: 100%;
+        max-width: 400px;
+      }
+      .log-item {
+        background: white;
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        border-left: 5px solid #5a67d8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div id="daily-total" class="total-banner">Total Today: 0 units</div>
+      <h2>🍼 Log Feeding</h2>
+      <input
+        type="number"
+        id="volume"
+        placeholder="Volume (oz or ml)"
+        inputmode="decimal"
+      />
+      <button class="btn btn-primary" id="logBtn">Log Feeding Now</button>
+      <button class="btn btn-danger" id="clearBtn">Delete All History</button>
+    </div>
+
+    <div class="history" id="history-list"></div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        push,
+        onValue,
+        remove,
+      } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCecVwwq7pHQs0enaGUA6wUZG-Wz4KQ94c",
+        authDomain: "feeder-99e8b.firebaseapp.com",
+        projectId: "feeder-99e8b",
+        storageBucket: "feeder-99e8b.firebasestorage.app",
+        messagingSenderId: "662741977621",
+        appId: "1:662741977621:web:e99e0beccb65b050c41c1c",
+        measurementId: "G-F9Q342KXGC",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+      const logsRef = ref(db, "feedings");
+
+      // Log Data
+      document.getElementById("logBtn").onclick = () => {
+        const vol = document.getElementById("volume").value;
+        if (!vol) return alert("Enter volume!");
+
+        push(logsRef, {
+          amount: parseFloat(vol),
+          timestamp: Date.now(),
+          dateString: new Date().toLocaleDateString(),
+        });
+        document.getElementById("volume").value = "";
+      };
+
+      // Sync Data (Runs automatically on both phones)
+      onValue(logsRef, (snapshot) => {
+        const data = snapshot.val();
+        const list = document.getElementById("history-list");
+        const totalDisplay = document.getElementById("daily-total");
+        list.innerHTML = "<h3>Recent Feedings</h3>";
+
+        let dailyTotal = 0;
+        const today = new Date().toLocaleDateString();
+
+        if (data) {
+          Object.values(data)
+            .reverse()
+            .forEach((log) => {
+              const time = new Date(log.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              list.innerHTML += `<div class="log-item"><span>${time}</span><span>${log.amount} units</span></div>`;
+
+              if (log.dateString === today) dailyTotal += log.amount;
+            });
+        }
+        totalDisplay.innerText = `Total Today: ${dailyTotal} units`;
+      });
+
+      // Delete Data
+      document.getElementById("clearBtn").onclick = () => {
+        if (confirm("Delete all history?")) remove(logsRef);
+      };
+    </script>
+  </body>
+</html>
